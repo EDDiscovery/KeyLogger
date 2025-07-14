@@ -105,13 +105,25 @@ namespace BaseUtils.Win32
             ExStyle = -20
         }
 
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetKeyboardLayout(uint idThread);
+
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         public static extern short VkKeyScan(char key);
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         public static extern short VkKeyScanEx(char key, IntPtr dwhkl);
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        public static extern short VkKeyScanExW(char key, IntPtr dwhkl);
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+
         public static extern int GetKeyNameText(int lParam, [Out] StringBuilder str, int len);
 
+        [DllImport("user32.dll")]
+        public static extern int ToUnicodeEx(uint wVirtKey, uint wScanCode, byte[] lpKeyState, [Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pwszBuff, int cchBuff, uint wFlags, IntPtr dwhkl);
+
+
+        [DllImport("user32.dll")]
+        public static extern int ToAsciiEx(uint uVirtKey, uint uScanCode, byte[] lpKeyState, [Out] StringBuilder lpChar, uint uFlags, IntPtr hkl);
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         public static extern IntPtr SetWindowsHookEx(int hookid, NativeMethods.HookProc pfnhook, HandleRef hinst, int threadid);
         [DllImport("user32.dll", EntryPoint = "GetWindowLong")]
@@ -277,6 +289,7 @@ namespace BaseUtils.Win32
             /// <summary>The maximum tracking size of the window. This value defaults to slighter larger than the size of the virtual screen.</summary>
             public System.Drawing.Point ptMaxTrackSize;
         }
+       
 
         [DllImport("kernel32.dll")]
         public static extern IntPtr LoadLibrary(string dllToLoad);

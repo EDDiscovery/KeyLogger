@@ -1,28 +1,23 @@
 ﻿
- /* Copyright ┬® 2017 Robert Preddy
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
- * file except in compliance with the License. You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under
- * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
- * ANY KIND, either express or implied. See the License for the specific language
- * governing permissions and limitations under the License.
- *
- */
+/* Copyright ┬® 2017 Robert Preddy
+*
+* Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
+* file except in compliance with the License. You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software distributed under
+* the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+* ANY KIND, either express or implied. See the License for the specific language
+* governing permissions and limitations under the License.
+*
+*/
 
 using BaseUtils.Win32Constants;
+using EliteDangerousCore;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Globalization;
 using System.Windows.Forms;
 
 namespace KeyLogger
@@ -30,6 +25,7 @@ namespace KeyLogger
     public partial class KeyLogger : Form
     {
         Stopwatch ws;
+        int curinputlangindex = 0;
 
         public KeyLogger()
         {
@@ -39,6 +35,46 @@ namespace KeyLogger
             ws = new Stopwatch();
             ws.Start();
             richTextBox1.Text = Environment.CommandLine + Environment.NewLine;
+            richTextBox1.Text += "UI Culture " + CultureInfo.CurrentUICulture.Name + Environment.NewLine;
+
+            var array = InputLanguage.InstalledInputLanguages;
+
+            curinputlangindex = 0;
+            foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
+            {
+                if (InputLanguage.CurrentInputLanguage.LayoutName == lang.LayoutName)
+                {
+                    break;
+                }
+
+                curinputlangindex++;
+            }
+
+            foreach (InputLanguage lang in InputLanguage.InstalledInputLanguages)
+            {
+                System.Diagnostics.Debug.Write($"{lang.Culture}");
+
+            }
+
+            labelIL.Text = InputLanguage.CurrentInputLanguage.LayoutName + " " + InputLanguage.CurrentInputLanguage.Culture.Name;
+
+            FrontierKeyConversion.Check();
+
+            //for( int vk = 0; vk < 256; vk++ )
+            //{
+            //    short v = UnsafeNativeMethods.VkKeyScanEx((char)i, kblayout);
+            //    bool shift = (v & 256) != 0;
+
+            //    bool ctrl = (v & 512) != 0;
+
+            //    bool alt = (v & 1024) != 0;
+
+            //    v = (short)(v & 0xff);
+            //    short 
+            //}
+
+
+
 
 #if false
             // some test code exercising the key win32 funcs
@@ -97,16 +133,28 @@ namespace KeyLogger
             Keys kadj = KeyObjectExtensions.VKeyAdjust(k, extendedkey, sc);
             string vkeyname = kadj.VKeyToString();
 
-            string res = (ws.ElapsedMilliseconds%10000).ToString("00000") + " " + t + " " + name.PadRight(15) + " VN " + vkeyname.PadRight(15) + " keycode " + ((uint)k).ToString() + 
+            string frontier = EliteDangerousCore.FrontierKeyConversion.FrontierToKeys("Key_" + vkeyname);
+
+            string res = (ws.ElapsedMilliseconds%10000).ToString("00000") + " " + t + " " + name.PadRight(15) + " VKeyName: " + vkeyname.PadRight(15) + " Keycode: " + ((uint)k).ToString() + 
                                 " sc:" + sc.ToString("X2") + " t:" + extbits.ToString("X2") + " " +
                                 (up ? "U" : "-") +
                                 (downalready ? "D" : "-") +
                                 (alt ? "A" : "-") +
                                 (extendedkey ? "E" : "-") +
-                                " " + modifiers.ToString();
+                                " " + modifiers.ToString() + 
+                                " Frontier: " + frontier;
             richTextBox1.Text += res + Environment.NewLine;
             richTextBox1.Select(richTextBox1.Text.Length, richTextBox1.Text.Length);
             richTextBox1.ScrollToCaret();
+        }
+
+        private void richTextBox1_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            string res = EliteDangerousCore.FrontierKeyConversion.FrontierToKeys("Key_" + e.KeyChar);
+            richTextBox1.Text += $"Key press {e.KeyChar} = Frontier: {res}" + Environment.NewLine;
+            richTextBox1.Select(richTextBox1.Text.Length, richTextBox1.Text.Length);
+            richTextBox1.ScrollToCaret();
+            e.Handled = true;
         }
 
         // maybe a full hook? https://github.com/shanselman/babysmash/blob/master/App.xaml.cs
@@ -126,7 +174,7 @@ namespace KeyLogger
                     Keys k = (Keys)m.WParam;
                     int sc = (int)m.LParam;
                     keyform.PressedKey((m.Msg == WM.SYSKEYDOWN) ? "SD" : "KD", k, sc, Control.ModifierKeys);
-                    return true;
+                   // return true;
                 }
 
                 if (m.Msg == WM.KEYUP || m.Msg == WM.SYSKEYUP)
@@ -134,21 +182,18 @@ namespace KeyLogger
                     Keys k = (Keys)m.WParam;
                     int sc = (int)m.LParam;
                     keyform.PressedKey((m.Msg == WM.SYSKEYDOWN) ? "SU" : "KU", k, sc, Control.ModifierKeys);
-                    return true;
+                   // return true;
                 }
 
                 return false;
             }
         }
 
-        private void richTextBox1_MouseClick(object sender, MouseEventArgs e)
-        {
-        }
-
+        
+        
         private void richTextBox1_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             richTextBox1.Text = "";
-
         }
 
         private void copyToolStripMenuItem_Click(object sender, EventArgs e)
@@ -158,6 +203,28 @@ namespace KeyLogger
                 text = richTextBox1.Text;
             Clipboard.SetText(text);
         }
+        
+        private void button1_Click(object sender, EventArgs e)
+        {
+            curinputlangindex--;
+            if (curinputlangindex < 0)
+                curinputlangindex = InputLanguage.InstalledInputLanguages.Count - 1;
+            InputLanguage.CurrentInputLanguage = InputLanguage.InstalledInputLanguages[curinputlangindex];
+            labelIL.Text = InputLanguage.CurrentInputLanguage.LayoutName + " " + InputLanguage.CurrentInputLanguage.Culture.Name;
+            richTextBox1.Focus();
+        }
+        
+        private void button2_Click(object sender, EventArgs e)
+        {
+            curinputlangindex++;
+            if (curinputlangindex >= InputLanguage.InstalledInputLanguages.Count)
+                curinputlangindex = 0;
 
+            InputLanguage.CurrentInputLanguage = InputLanguage.InstalledInputLanguages[curinputlangindex];
+            labelIL.Text = InputLanguage.CurrentInputLanguage.LayoutName + " " + InputLanguage.CurrentInputLanguage.Culture.Name;
+            richTextBox1.Focus();
+        }
+ 
     }
 }
+

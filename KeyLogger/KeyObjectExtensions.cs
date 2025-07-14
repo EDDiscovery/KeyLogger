@@ -26,23 +26,19 @@ public static class KeyObjectExtensions
     public const Keys NumEnter = (Keys)1024;    // special keys code for numenter
 
     private static Tuple<string, Keys>[] oemtx = new Tuple<string, Keys>[]      // need these due to repeats of codes in the keys enum
-    {                                                                               // just using tostring gets you sometimes these, sometimes the oem names
-        new Tuple<string,Keys>("Semicolon", Keys.Oem1),
-        new Tuple<string,Keys>("Question", Keys.Oem2),
-        new Tuple<string,Keys>("Tilde", Keys.Oem3),
-        new Tuple<string,Keys>("OpenBrackets", Keys.Oem4),
-        new Tuple<string,Keys>("Pipe", Keys.Oem5),
-        new Tuple<string,Keys>("Equals", Keys.Oemplus),     // need to call it equals to avoid confusion with num key plus
-        new Tuple<string,Keys>("CloseBrackets", Keys.Oem6),
-        new Tuple<string,Keys>("Quotes", Keys.Oem7),
-        new Tuple<string,Keys>("Backquote", Keys.Oem8),
-        new Tuple<string,Keys>("OemClear", Keys.OemClear),  // clashes with clear..
-        new Tuple<string,Keys>("PageDown", Keys.Next),  
-
-        //new Tuple<string,Keys>("CapsLock", Keys.Capital),     // On consideration, not renaming them is the best. Stick to c# names
-        //new Tuple<string,Keys>("AltKey", Keys.Menu),
-        //new Tuple<string,Keys>("RAltKey", Keys.RMenu),
-        //new Tuple<string,Keys>("LAltKey", Keys.LMenu),
+    {                                                                           // just using tostring gets you sometimes these, sometimes the oem names
+        new Tuple<string,Keys>("Semicolon", Keys.Oem1),     // 186d
+        new Tuple<string,Keys>("Question", Keys.Oem2),      // 191 OemQuestion
+        new Tuple<string,Keys>("Tilde", Keys.Oem3),         // 192 Oemtilde
+        new Tuple<string,Keys>("OpenBrackets", Keys.Oem4),  // 219 OemOpenBrackets
+        new Tuple<string,Keys>("Pipe", Keys.Oem5),          // 220 OemPipe
+        new Tuple<string,Keys>("Equals", Keys.Oemplus),     // 187 need to call it equals to avoid confusion with num key plus
+        new Tuple<string,Keys>("CloseBrackets", Keys.Oem6), // 221 OemCloseBrackets
+        new Tuple<string,Keys>("Quotes", Keys.Oem7),        // 222 OenQuotes
+        new Tuple<string,Keys>("Backquote", Keys.Oem8),     // 223 oem8 does not have an alias, but make one up for consistency
+        new Tuple<string,Keys>("OemClear", Keys.OemClear),  // 254 clashes with clear, so give it a longer name
+        new Tuple<string,Keys>("PageDown", Keys.Next),      // 34 rename next to pagedown which it shares a name with.
+                                                            // Oem102 = OemBackslash
     };
 
 
@@ -287,6 +283,34 @@ public static class KeyObjectExtensions
 
         return keyseq;
     }
+
+    static public Dictionary<char, uint> CharToScanCode()       // give me a char vs scan code map
+    {
+        Dictionary<char, uint> chartoscancode = new Dictionary<char, uint>();
+        for (short i = 0; i < 0xff; i++)    // for OEMASCII codes on page 437, map to OEMASCII 
+        {
+            Encoding enc = Encoding.GetEncoding(437);
+            byte[] myByte = new byte[] { (byte)(i) };
+            string str = enc.GetString(myByte);     // now in unicode
+
+            int res = (int)BaseUtils.Win32.SafeNativeMethods.OemKeyScan(i);  // in code page 437
+
+            if (res != -1)
+            {
+                //System.Diagnostics.Debug.WriteLine("Char {0:x} {1} = SC {2:x}", i, str, res);
+
+                if (i == '.' && res == 0x53)    // some maps call '.' numpad period.. lets call it dot on sc 34
+                    res = 0x34;
+
+                chartoscancode[str[0]] = (uint)res;
+            }
+        }
+
+        return chartoscancode;
+    }
+
+
+
 
 }
 
